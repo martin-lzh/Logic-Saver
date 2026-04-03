@@ -1,12 +1,22 @@
 <script setup lang="ts">
 // App.vue — Single-page application shell: header, settings drawer, input, output
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import { Settings2, Moon, Sun, X, Trash2, Save, Loader2, StopCircle, Clipboard, Check, ChevronDown, ChevronUp, RefreshCw, ImageDown, ImagePlus } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
+import { Settings2, Moon, Sun, X, Trash2, Save, Loader2, StopCircle, Clipboard, Check, ChevronDown, ChevronUp, RefreshCw, ImageDown, ImagePlus, Languages } from 'lucide-vue-next'
 import { toPng } from 'html-to-image'
 import MarkdownIt from 'markdown-it'
 import { useChat } from './composables/useChat'
 import { useImageUpload } from './composables/useImageUpload'
 import { useModelCapabilities } from './composables/useModelCapabilities'
+
+const { t, locale } = useI18n()
+
+function toggleLocale() {
+  const next = locale.value === 'en' ? 'zh-CN' : 'en'
+  locale.value = next
+  localStorage.setItem('locale', next)
+  document.documentElement.lang = next
+}
 
 type Provider = 'openrouter' | 'openai'
 
@@ -113,7 +123,7 @@ function saveKey() {
   const val = keyInput.value.trim()
 
   if (val && val.length < 8) {
-    keyError.value = 'API key seems too short. Please check and try again.'
+    keyError.value = t('settings.apiKeyShort')
     return
   }
 
@@ -176,25 +186,9 @@ const inputText = ref('')
 const textareaEl = ref<HTMLTextAreaElement | null>(null)
 const inputCollapsed = ref(false)
 
-// --- Verbosity & Objectivity sliders ---
-const VERBOSITY_LABELS: Record<number, string> = {
-  1: 'One sentence',
-  2: 'TL;DR',
-  3: 'Bullet points',
-  4: 'Compact',
-  5: 'Standard',
-  6: 'Detailed',
-  7: 'Comprehensive',
-}
-const OBJECTIVITY_LABELS: Record<number, string> = {
-  1: 'Fact-check',
-  2: 'Facts only',
-  3: 'Neutral report',
-  4: 'Balanced',
-  5: 'Preserve voice',
-  6: 'Expressive',
-  7: 'Full color',
-}
+// --- Verbosity & Objectivity sliders (i18n-reactive) ---
+const verbosityLabel = computed(() => t(`verbosity.${verbosity.value}`))
+const objectivityLabel = computed(() => t(`objectivity.${objectivity.value}`))
 
 const verbosity = ref(Number(localStorage.getItem('logic_saver_verbosity')) || 5)
 const objectivity = ref(Number(localStorage.getItem('logic_saver_objectivity')) || 5)
@@ -347,6 +341,7 @@ onMounted(() => {
   initDarkMode()
   initProvider()
   triggerVisionCheck()
+  document.documentElement.lang = locale.value
 })
 </script>
 
@@ -357,13 +352,20 @@ onMounted(() => {
       class="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-surface-light/80 dark:bg-surface-dark/80 backdrop-blur-sm border-b border-black/5 dark:border-white/5"
     >
       <h1 class="text-lg font-semibold tracking-tight text-accent-light dark:text-accent-dark font-sourceSerif4">
-        Logic Saver
+        {{ t('header.title') }}
       </h1>
       <div class="flex items-center gap-2">
         <button
+          @click="toggleLocale"
+          class="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 active:scale-[0.97] transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center"
+          :aria-label="t('header.language')"
+        >
+          <Languages :size="20" class="text-accent-light dark:text-accent-dark" />
+        </button>
+        <button
           @click="toggleDark"
           class="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 active:scale-[0.97] transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center"
-          aria-label="Toggle dark mode"
+          :aria-label="t('header.toggleDarkMode')"
         >
           <Sun v-if="isDark" :size="20" class="text-accent-dark" />
           <Moon v-else :size="20" class="text-accent-light" />
@@ -371,7 +373,7 @@ onMounted(() => {
         <button
           @click="openSettings"
           class="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 active:scale-[0.97] transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center"
-          aria-label="Settings"
+          :aria-label="t('header.settings')"
         >
           <Settings2 :size="20" class="text-accent-light dark:text-accent-dark" />
         </button>
@@ -395,11 +397,11 @@ onMounted(() => {
       >
         <!-- Drawer header -->
         <div class="flex items-center justify-between px-5 py-4 border-b border-black/5 dark:border-white/5">
-          <h2 class="text-base font-semibold text-accent-light dark:text-accent-dark">Settings</h2>
+          <h2 class="text-base font-semibold text-accent-light dark:text-accent-dark">{{ t('settings.title') }}</h2>
           <button
             @click="settingsOpen = false"
             class="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 active:scale-[0.97] transition-transform min-w-[44px] min-h-[44px] flex items-center justify-center"
-            aria-label="Close settings"
+            :aria-label="t('settings.close')"
           >
             <X :size="20" class="text-accent-light dark:text-accent-dark" />
           </button>
@@ -409,7 +411,7 @@ onMounted(() => {
           <!-- Provider toggle -->
           <div>
             <label class="block text-xs font-medium uppercase tracking-wider text-accent-light/60 dark:text-accent-dark/60 mb-2">
-              Provider
+              {{ t('settings.provider') }}
             </label>
             <div class="flex rounded-lg bg-black/5 dark:bg-white/5 p-1">
               <button
@@ -438,11 +440,11 @@ onMounted(() => {
             <label
               class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-accent-light/60 dark:text-accent-dark/60 mb-2"
             >
-              {{ currentMeta.label }} API Key
+              {{ t('settings.apiKey', { label: currentMeta.label }) }}
               <span
                 v-if="currentProviderKeyStored"
                 class="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"
-                title="API key saved"
+                :title="t('settings.apiKeySaved')"
               />
             </label>
             <input
@@ -453,7 +455,7 @@ onMounted(() => {
               @keydown.enter="saveKey"
             />
             <p v-if="keyError" class="mt-1.5 text-xs text-red-500">{{ keyError }}</p>
-            <p v-if="keySaved" class="mt-1.5 text-xs text-emerald-500">Settings saved</p>
+            <p v-if="keySaved" class="mt-1.5 text-xs text-emerald-500">{{ t('settings.saved') }}</p>
           </div>
 
           <!-- Base URL -->
@@ -461,7 +463,7 @@ onMounted(() => {
             <label
               class="block text-xs font-medium uppercase tracking-wider text-accent-light/60 dark:text-accent-dark/60 mb-2"
             >
-              Base URL
+              {{ t('settings.baseUrl') }}
             </label>
             <input
               v-model="baseUrlInput"
@@ -470,7 +472,7 @@ onMounted(() => {
               class="w-full px-3 py-3 rounded-lg border border-black/10 dark:border-white/10 bg-transparent text-sm text-accent-light dark:text-accent-dark placeholder:text-accent-light/30 dark:placeholder:text-accent-dark/30 focus:outline-none focus:ring-2 focus:ring-accent-light/20 dark:focus:ring-accent-dark/20 transition-shadow min-h-[44px]"
             />
             <p class="mt-1 text-[11px] text-accent-light/40 dark:text-accent-dark/40">
-              Leave empty for default: {{ currentMeta.defaultBaseUrl }}
+              {{ t('settings.baseUrlHint', { url: currentMeta.defaultBaseUrl }) }}
             </p>
           </div>
 
@@ -479,7 +481,7 @@ onMounted(() => {
             <label
               class="block text-xs font-medium uppercase tracking-wider text-accent-light/60 dark:text-accent-dark/60 mb-2"
             >
-              Model
+              {{ t('settings.model') }}
             </label>
             <input
               v-model="modelInput"
@@ -488,7 +490,7 @@ onMounted(() => {
               class="w-full px-3 py-3 rounded-lg border border-black/10 dark:border-white/10 bg-transparent text-sm text-accent-light dark:text-accent-dark placeholder:text-accent-light/30 dark:placeholder:text-accent-dark/30 focus:outline-none focus:ring-2 focus:ring-accent-light/20 dark:focus:ring-accent-dark/20 transition-shadow min-h-[44px]"
             />
             <p class="mt-1 text-[11px] text-accent-light/40 dark:text-accent-dark/40">
-              Leave empty for default: {{ currentMeta.defaultModel }}
+              {{ t('settings.modelHint', { model: currentMeta.defaultModel }) }}
             </p>
           </div>
 
@@ -499,14 +501,14 @@ onMounted(() => {
               class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-accent-light dark:bg-accent-dark text-white dark:text-black text-sm font-medium active:scale-[0.97] transition-transform min-h-[44px]"
             >
               <Save :size="16" />
-              Save
+              {{ t('settings.save') }}
             </button>
             <button
               @click="deleteKey"
               class="flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-red-500/30 text-red-500 text-sm font-medium hover:bg-red-500/5 active:scale-[0.97] transition-transform min-h-[44px]"
             >
               <Trash2 :size="16" />
-              Delete
+              {{ t('settings.delete') }}
             </button>
           </div>
         </div>
@@ -521,17 +523,17 @@ onMounted(() => {
           <label
             class="text-xs font-medium uppercase tracking-wider text-accent-light/60 dark:text-accent-dark/60"
           >
-            Paste your text
+            {{ t('input.label') }}
           </label>
           <button
             v-if="inputText.trim() && (isStreaming || response)"
             @click="toggleInputCollapse"
             class="flex items-center gap-1 px-1.5 py-1 rounded-md text-xs text-accent-light/50 dark:text-accent-dark/50 hover:text-accent-light dark:hover:text-accent-dark hover:bg-black/5 dark:hover:bg-white/5 active:scale-[0.97] transition-all min-w-[44px] min-h-[34px] justify-center"
-            :aria-label="inputCollapsed ? 'Expand input' : 'Collapse input'"
+            :aria-label="inputCollapsed ? t('input.expand') : t('input.collapse')"
           >
             <ChevronDown v-if="inputCollapsed" :size="14" />
             <ChevronUp v-else :size="14" />
-            {{ inputCollapsed ? 'Expand' : 'Collapse' }}
+            {{ inputCollapsed ? t('input.expand') : t('input.collapse') }}
           </button>
         </div>
         <div
@@ -544,7 +546,7 @@ onMounted(() => {
           <textarea
             ref="textareaEl"
             v-model="inputText"
-            placeholder="Paste raw social media text here…"
+            :placeholder="t('input.placeholder')"
             rows="4"
             :class="[
               'w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-surface-light dark:bg-surface-dark text-sm text-accent-light dark:text-accent-dark placeholder:text-accent-light/30 dark:placeholder:text-accent-dark/30 resize-none focus:outline-none focus:ring-2 focus:ring-accent-light/20 dark:focus:ring-accent-dark/20 transition-all leading-relaxed',
@@ -561,7 +563,7 @@ onMounted(() => {
             @click="openFilePicker"
             class="absolute bottom-2 right-2 p-2 rounded-lg text-accent-light/40 dark:text-accent-dark/40 hover:text-accent-light dark:hover:text-accent-dark hover:bg-black/5 dark:hover:bg-white/5 active:scale-[0.97] transition-all"
             :class="inputCollapsed ? 'hidden' : ''"
-            aria-label="Upload image"
+            :aria-label="t('input.uploadImage')"
             type="button"
           >
             <ImagePlus :size="18" />
@@ -579,7 +581,7 @@ onMounted(() => {
             v-if="isDragOver"
             class="absolute inset-0 rounded-xl bg-accent-light/5 dark:bg-accent-dark/5 border-2 border-dashed border-accent-light/30 dark:border-accent-dark/30 flex items-center justify-center pointer-events-none"
           >
-            <span class="text-sm text-accent-light/60 dark:text-accent-dark/60">Drop image here</span>
+            <span class="text-sm text-accent-light/60 dark:text-accent-dark/60">{{ t('input.dropImage') }}</span>
           </div>
         </div>
 
@@ -598,7 +600,7 @@ onMounted(() => {
             <button
               @click="removeImage(idx)"
               class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Remove image"
+              :aria-label="t('input.removeImage')"
               type="button"
             >
               &times;
@@ -616,10 +618,10 @@ onMounted(() => {
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="text-xs font-medium uppercase tracking-wider text-accent-light/60 dark:text-accent-dark/60">
-              Verbosity
+              {{ t('verbosity.label') }}
             </label>
             <span class="text-xs font-medium text-accent-light dark:text-accent-dark">
-              {{ VERBOSITY_LABELS[verbosity] }}
+              {{ verbosityLabel }}
             </span>
           </div>
           <input
@@ -631,8 +633,8 @@ onMounted(() => {
             class="slider w-full"
           />
           <div class="flex justify-between mt-1">
-            <span class="text-[10px] text-accent-light/40 dark:text-accent-dark/40">One sentence</span>
-            <span class="text-[10px] text-accent-light/40 dark:text-accent-dark/40">Comprehensive</span>
+            <span class="text-[10px] text-accent-light/40 dark:text-accent-dark/40">{{ t('verbosity.1') }}</span>
+            <span class="text-[10px] text-accent-light/40 dark:text-accent-dark/40">{{ t('verbosity.7') }}</span>
           </div>
         </div>
 
@@ -640,10 +642,10 @@ onMounted(() => {
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="text-xs font-medium uppercase tracking-wider text-accent-light/60 dark:text-accent-dark/60">
-              Objectivity
+              {{ t('objectivity.label') }}
             </label>
             <span class="text-xs font-medium text-accent-light dark:text-accent-dark">
-              {{ OBJECTIVITY_LABELS[objectivity] }}
+              {{ objectivityLabel }}
             </span>
           </div>
           <input
@@ -655,8 +657,8 @@ onMounted(() => {
             class="slider w-full"
           />
           <div class="flex justify-between mt-1">
-            <span class="text-[10px] text-accent-light/40 dark:text-accent-dark/40">Fact-check</span>
-            <span class="text-[10px] text-accent-light/40 dark:text-accent-dark/40">Full color</span>
+            <span class="text-[10px] text-accent-light/40 dark:text-accent-dark/40">{{ t('objectivity.1') }}</span>
+            <span class="text-[10px] text-accent-light/40 dark:text-accent-dark/40">{{ t('objectivity.7') }}</span>
           </div>
         </div>
       </div>
@@ -673,7 +675,7 @@ onMounted(() => {
       <div v-if="renderedHtml" class="mb-5">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs font-medium uppercase tracking-wider text-accent-light/60 dark:text-accent-dark/60">
-            Output
+            {{ t('output.label') }}
           </span>
           <div class="flex items-center gap-1">
             <button
@@ -683,11 +685,11 @@ onMounted(() => {
                 'flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs active:scale-[0.97] transition-all min-w-[44px] min-h-[44px] justify-center',
                 'text-accent-light/50 dark:text-accent-dark/50 hover:text-accent-light dark:hover:text-accent-dark hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-30',
               ]"
-              aria-label="Save as image"
+              :aria-label="t('output.saveAsImage')"
             >
               <Loader2 v-if="exporting" :size="14" class="animate-spin" />
               <ImageDown v-else :size="14" />
-              Image
+              {{ t('output.image') }}
             </button>
             <button
               @click="copyOutput"
@@ -697,11 +699,11 @@ onMounted(() => {
                   ? 'text-emerald-500'
                   : 'text-accent-light/50 dark:text-accent-dark/50 hover:text-accent-light dark:hover:text-accent-dark hover:bg-black/5 dark:hover:bg-white/5',
               ]"
-              aria-label="Copy raw Markdown"
+              :aria-label="t('output.copyMarkdown')"
             >
               <Check v-if="copied" :size="14" />
               <Clipboard v-else :size="14" />
-              {{ copied ? 'Copied!' : 'Copy' }}
+              {{ copied ? t('output.copied') : t('output.copy') }}
             </button>
           </div>
         </div>
@@ -715,7 +717,7 @@ onMounted(() => {
       <!-- Streaming indicator -->
       <div v-if="isStreaming && !renderedHtml" class="mb-5 flex items-center gap-2 text-sm text-accent-light/50 dark:text-accent-dark/50">
         <Loader2 :size="16" class="animate-spin" />
-        Generating…
+        {{ t('status.generating') }}
       </div>
 
       <!-- Desktop action bar -->
@@ -727,7 +729,7 @@ onMounted(() => {
           class="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-accent-light dark:bg-accent-dark text-white dark:text-black text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-transform min-h-[44px]"
         >
           <RefreshCw v-if="response" :size="16" />
-          {{ response ? 'Regenerate' : 'Submit' }}
+          {{ response ? t('actions.regenerate') : t('actions.submit') }}
         </button>
         <button
           v-else
@@ -735,14 +737,14 @@ onMounted(() => {
           class="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-red-500 text-white text-sm font-medium active:scale-[0.97] transition-transform min-h-[44px]"
         >
           <StopCircle :size="16" />
-          Stop
+          {{ t('actions.stop') }}
         </button>
         <button
           @click="handleClear"
           :disabled="isStreaming"
           class="px-5 py-3 rounded-xl border border-black/10 dark:border-white/10 text-sm font-medium text-accent-light dark:text-accent-dark disabled:opacity-30 disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/5 active:scale-[0.97] transition-transform min-h-[44px]"
         >
-          Clear
+          {{ t('actions.clear') }}
         </button>
       </div>
     </main>
@@ -758,7 +760,7 @@ onMounted(() => {
         class="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-accent-light dark:bg-accent-dark text-white dark:text-black text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97] transition-transform min-h-[44px]"
       >
         <RefreshCw v-if="response" :size="16" />
-        {{ response ? 'Regenerate' : 'Submit' }}
+        {{ response ? t('actions.regenerate') : t('actions.submit') }}
       </button>
       <button
         v-else
@@ -766,14 +768,14 @@ onMounted(() => {
         class="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-red-500 text-white text-sm font-medium active:scale-[0.97] transition-transform min-h-[44px]"
       >
         <StopCircle :size="16" />
-        Stop
+        {{ t('actions.stop') }}
       </button>
       <button
         @click="handleClear"
         :disabled="isStreaming"
         class="px-5 py-3 rounded-xl border border-black/10 dark:border-white/10 text-sm font-medium text-accent-light dark:text-accent-dark disabled:opacity-30 disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/5 active:scale-[0.97] transition-transform min-h-[44px]"
       >
-        Clear
+        {{ t('actions.clear') }}
       </button>
     </div>
   </div>

@@ -1,5 +1,6 @@
 // Composable — handles image upload, paste, drag-drop, compression, and preview state
 import { ref } from 'vue'
+import i18n from '../i18n'
 
 const MAX_RAW_SIZE = 20 * 1024 * 1024 // 20 MB — reject files larger than this before processing
 const MAX_DIMENSION = 2048 // longest side after compression
@@ -12,7 +13,7 @@ export function useImageUpload() {
   function compressImage(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       if (file.size > MAX_RAW_SIZE) {
-        reject(new Error(`Image too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 20 MB.`))
+        reject(new Error(i18n.global.t('errors.imageTooLarge', { size: (file.size / 1024 / 1024).toFixed(1) })))
         return
       }
 
@@ -43,10 +44,10 @@ export function useImageUpload() {
           const dataUrl = canvas.toDataURL(mimeType, quality)
           resolve(dataUrl)
         }
-        img.onerror = () => reject(new Error('Failed to load image'))
+        img.onerror = () => reject(new Error(i18n.global.t('errors.imageLoadFailed')))
         img.src = reader.result as string
       }
-      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.onerror = () => reject(new Error(i18n.global.t('errors.imageReadFailed')))
       reader.readAsDataURL(file)
     })
   }
@@ -61,7 +62,7 @@ export function useImageUpload() {
         const dataUrl = await compressImage(file)
         images.value.push(dataUrl)
       } catch (err) {
-        imageError.value = err instanceof Error ? err.message : 'Failed to process image'
+        imageError.value = err instanceof Error ? err.message : i18n.global.t('errors.imageProcessFailed')
       }
     }
   }

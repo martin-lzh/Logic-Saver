@@ -1,5 +1,6 @@
 // Composable — manages LLM streaming, abort, and error taxonomy for both providers
 import { ref } from 'vue'
+import i18n from '../i18n'
 
 export type Provider = 'openrouter' | 'openai'
 
@@ -108,7 +109,7 @@ export function useChat() {
     const apiKey = localStorage.getItem(config.storageKey)
 
     if (!apiKey) {
-      error.value = `No API key set. Open Settings to add your ${config.label} key.`
+      error.value = i18n.global.t('errors.noApiKey', { label: config.label })
       return
     }
 
@@ -156,16 +157,16 @@ export function useChat() {
         isStreaming.value = false
         return
       }
-      error.value = 'Connection failed. Check your network and try again.'
+      error.value = i18n.global.t('errors.connectionFailed')
       isStreaming.value = false
       return
     }
 
     if (!res.ok) {
       if (res.status === 401) {
-        error.value = `Invalid API key. Please check your ${config.label} key in Settings.`
+        error.value = i18n.global.t('errors.invalidApiKey', { label: config.label })
       } else if (res.status === 429) {
-        error.value = 'Rate limit reached. Please wait a moment and try again.'
+        error.value = i18n.global.t('errors.rateLimited')
       } else {
         const body = await res.text().catch(() => '')
         error.value = body ? `Error ${res.status}: ${body.slice(0, 200)}` : `Error ${res.status}`
@@ -176,7 +177,7 @@ export function useChat() {
 
     const reader = res.body?.getReader()
     if (!reader) {
-      error.value = 'Connection failed. Check your network and try again.'
+      error.value = i18n.global.t('errors.connectionFailed')
       isStreaming.value = false
       return
     }
