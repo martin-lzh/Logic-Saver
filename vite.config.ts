@@ -34,7 +34,6 @@ function edgeFunctionDevPlugin(): Plugin {
           method,
           headers,
           body: method === 'POST' ? body : undefined,
-          // @ts-expect-error duplex required for streaming bodies in Node 18+
           duplex: 'half',
         })
 
@@ -73,7 +72,8 @@ export default defineConfig({
   plugins: [vue(), edgeFunctionDevPlugin()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      'vue-i18n': 'vue-i18n/dist/vue-i18n.esm-bundler.js',
     }
   }
 })
