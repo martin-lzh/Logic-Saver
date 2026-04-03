@@ -75,5 +75,6 @@ export default {
     imageLoadFailed: '图片加载失败',
     imageReadFailed: '文件读取失败',
     imageProcessFailed: '图片处理失败',
+    outputTruncated: '输出因模型 token 限制被截断。请尝试缩短输入或更换模型。',
   },
 }

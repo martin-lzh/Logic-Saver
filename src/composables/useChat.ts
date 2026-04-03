@@ -78,12 +78,6 @@ ${OBJECTIVITY_INSTRUCTIONS[o]}
 </constraints>`
 }
 
-// Map verbosity level to max_tokens
-function getMaxTokens(verbosity: number): number {
-  const map: Record<number, number> = { 1: 256, 2: 512, 3: 1024, 4: 1536, 5: 2048, 6: 3072, 7: 4096 }
-  return map[Math.max(1, Math.min(7, verbosity))] ?? 2048
-}
-
 // Map objectivity level to temperature
 function getTemperature(objectivity: number): number {
   const map: Record<number, number> = { 1: 0.1, 2: 0.15, 3: 0.2, 4: 0.25, 5: 0.3, 6: 0.4, 7: 0.5 }
@@ -142,7 +136,6 @@ export function useChat() {
         },
         body: JSON.stringify({
           model,
-          max_tokens: getMaxTokens(verbosity),
           temperature: getTemperature(objectivity),
           stream: true,
           messages: [
@@ -169,7 +162,14 @@ export function useChat() {
         error.value = i18n.global.t('errors.rateLimited')
       } else {
         const body = await res.text().catch(() => '')
-        error.value = body ? `Error ${res.status}: ${body.slice(0, 200)}` : `Error ${res.status}`
+        let message = body
+        if (body) {
+          try {
+            const parsed = JSON.parse(body)
+            if (parsed.error) message = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error)
+          } catch { /* not JSON, use raw text */ }
+        }
+        error.value = message ? `Error ${res.status}: ${message.slice(0, 300)}` : `Error ${res.status}`
       }
       isStreaming.value = false
       return
@@ -185,6 +185,7 @@ export function useChat() {
     const decoder = new TextDecoder()
     let buffer = ''
     let insideThink = false // track whether we're inside a <think> block
+    let truncated = false // detect finish_reason: 'length'
 
     try {
       while (true) {
@@ -203,6 +204,8 @@ export function useChat() {
 
           try {
             const parsed = JSON.parse(data)
+            const finishReason = parsed.choices?.[0]?.finish_reason
+            if (finishReason === 'length') truncated = true
             const content = parsed.choices?.[0]?.delta?.content
             if (content) {
               // Strip <think>...</think> blocks (may arrive across multiple chunks)
@@ -241,9 +244,12 @@ export function useChat() {
       }
     } catch {
       if (!controller.signal.aborted) {
-        error.value = 'Connection failed. Check your network and try again.'
+        error.value = i18n.global.t('errors.connectionFailed')
       }
     } finally {
+      if (truncated && !controller?.signal.aborted) {
+        error.value = i18n.global.t('errors.outputTruncated')
+      }
       isStreaming.value = false
       controller = null
     }

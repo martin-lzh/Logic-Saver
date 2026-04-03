@@ -75,5 +75,6 @@ export default {
     imageLoadFailed: 'Failed to load image',
     imageReadFailed: 'Failed to read file',
     imageProcessFailed: 'Failed to process image',
+    outputTruncated: 'Output was cut short by the model\u2019s token limit. Try shortening your input or choosing a different model.',
   },
 }
